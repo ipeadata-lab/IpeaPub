@@ -1,19 +1,18 @@
 import json
-from typing import Dict, Any, List, Union, Optional
+from typing import Dict, Any, List
 import os
 from pathlib import Path
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from src.embeddings.modelo_texto import ModeloEmbeddingTexto
 from src.ner.ner import ModeloNER
-from src.config import DATA_DIR, TAMANHO_CHUNK, SOBREPOR_CHUNK
+from src.config import TAMANHO_CHUNK, SOBREPOR_CHUNK
 
 class IngestorTexto:
     def __init__(self):
         self.text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=TAMANHO_CHUNK,
             chunk_overlap=SOBREPOR_CHUNK,
-            separators=["\n\n", "\n", ". ", " ", ""],
             length_function=len,
         )
         self.modelo_embedding_texto = ModeloEmbeddingTexto()
@@ -41,9 +40,12 @@ class IngestorTexto:
                     "title": metadados.get("title", None),
                     "modDate": metadados.get("modDate", None),
                     "filename": os.path.basename(caminho),
+                    "content_type" : "text"
                 }
             else:
-                metadados_base = {}
+                metadados_base = {
+                    "content_type" : "text"
+                }
 
         conteudo_paginas = []
         if "pages" in dados and isinstance(dados["pages"], list):

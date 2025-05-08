@@ -6,34 +6,3 @@ VLM - microsoft/git-base
 embedding de imagens - CLIP (openai/clip-vit-base-patch32)
 ingestão de tabelas - Langchain MarkdownHeaderSplitter
 LLM - Ollama API
-
-
-
-        {
-            "self_ref": "#/tables/5",
-            "caption": "",
-            "references": [],
-            "footnotes": [],
-            "page": 22,
-            "table": "| Região •     | Incremento no Número de Tratores Entre 1975 e 1980 1985   | Entre 1980 e   |\n|--------------|-----------------------------------------------------------|----------------|\n| Norte        | 4. 562                                                    | -213           |\n| Nordeste     | 22. 975                                                   | 233            |\n| Sudeste      | 70. 690                                                   | 34. 099        |\n| Sul          | 89. 509                                                   | 46. 393        |\n| Centro-Oeste | 34. 359                                                   | 26. 423        |\n| BRASIL       | 222. 095                                                  | 106. 845       |"
-        },
-        {
-            "self_ref": "#/tables/6",
-            "caption": "",
-            "references": [],
-            "footnotes": [],
-            "page": 23,
-            "table": "|              | Indicador de   |       | Mecanização   |       |\n|--------------|----------------|-------|---------------|-------|\n| Regiões      | 1970           | 1975  | 1980          | 1985  |\n| BRASIL       | 204,9          | 123,8 | 90,1          | 80,3  |\n| Norte        | 547,6          | 689,8 | 277,0         | 332,1 |\n| Nordeste     | 1. 418,0       | 931,2 | 373,0         | 376,9 |\n| Sudeste      | 116,5          | 79,1  | 59,8          | 57,4  |\n| Sul          | 170,7          | 89,4  | 62,0          | 52,0  |\n| Centro-Oeste | 323,4          | 149,8 | 102,2         | 86,1  |"
-        },
-        {
-            "self_ref": "#/tables/7",
-            "caption": "",
-            "references": [],
-            "footnotes": [],
-            "page": 26,
-            "table": "| Regiões      | Variação dos Efetivos de Bovinos Entre 1975 e 1980 Entre 1980 e 1985   |\n|--------------|------------------------------------------------------------------------|\n| Norte        | 1. 859. 504 1. 369. 465                                                |\n| Nordeste     | 3. 464. 667 780. 690                                                   |\n| Sudeste      | -401.874 826. 142                                                      |\n| Sul          | 2. 978. 832 247.253                                                    |\n| Centro-Oeste | 8. 510. 966 6. 333. 870                                                |"
-        },
-
-
-
-tipos de tabelas

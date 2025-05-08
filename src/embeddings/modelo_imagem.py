@@ -1,7 +1,7 @@
 import torch
 from PIL import Image
 from transformers import CLIPProcessor, CLIPModel
-from typing import List, Union, Optional
+from typing import List, Union
 import numpy as np
 from pathlib import Path
 
@@ -45,7 +45,7 @@ class ModeloEmbeddingImagem:
         
         return embeddings
     
-    def get_text_embeddings(self, textos: Union[str, List[str]]) -> np.ndarray:
+    def gerar_embedding_textual(self, textos: Union[str, List[str]]) -> np.ndarray:
         """
         Gera embeddings para texto no espaço conjunto de texto-imagem do CLIP
         Útil para realizar buscas multimodais (texto -> imagem)
@@ -67,5 +67,6 @@ class ModeloEmbeddingImagem:
         # Normalizar os embeddings
         embeddings = text_embeddings.cpu().numpy()
         embeddings = embeddings / np.linalg.norm(embeddings, axis=1, keepdims=True)
-        
+
         return embeddings
+    

@@ -33,37 +33,30 @@ class IngestorTabela:
             else:
                 metadados_base = {}
 
-        tabelas = []
-        if isinstance(dados, dict) and "tables" in dados and isinstance(dados["tables"], list):
-            for i, tabela in enumerate(dados["tables"]):
-                if isinstance(tabela, dict) and "table" in tabela:
-                    metadados_tabela = metadados_base.copy()
-                    metadados_tabela["tabela_id"] = i + 1
-
-                    for chave, valor in tabela.items():
-                        if chave != "table" and isinstance(valor, (str, int, float, bool)):
-                            metadados_tabela[chave] = valor
-
-                    # Limpeza de espaços em números: "1. 234. 567" -> "1.234.567"
-                    texto_tabela = re.sub(r'(\d)\.\s(\d)', r'\1.\2', tabela["table"])
-
-                    tabelas.append({
-                        "texto": texto_tabela,
-                        "metadados": metadados_tabela
-                    })
-
         documentos_processados = []
+        # Processar cada tabela
+        tabelas = dados.get("tables", [])
+        for idx, tabela in enumerate(tabelas):
+            if isinstance(tabela, dict) and "table" in tabela:
+                metadados_tabela = metadados_base.copy()
+                tabela_markdown = tabela["table"]
+                metadados_tabela.update({
+                    "self_ref": tabela.get("self_ref", ""),
+                    "caption" : tabela.get("caption", ""),
+                    "references" : tabela.get("references", []),
+                    "footnotes" : tabela.get("footnotes", []),
+                    "page" : tabela.get("page"),
+                    "content_type" : "table",
+                    "table_id" : idx + 1,
+                })
 
-        for tabela in tabelas:
-            markdown = tabela["texto"]
-            metadados = tabela["metadados"]
-            metadados = self.modelo_ner.enriquecer_metadados(markdown, metadados)
-            embedding = self.modelo_embedding.gerar_embedding(markdown).tolist()
-            documentos_processados.append({
-                "texto": markdown,
-                "metadados": metadados,
-                "embedding": embedding
-            })
+                metadados_enriquecidos = self.modelo_ner.enriquecer_metadados(tabela_markdown, metadados_tabela)
+                embedding = self.modelo_embedding.gerar_embedding(tabela_markdown).tolist()
+                documentos_processados.append({
+                    "texto": tabela_markdown,
+                    "metadados": metadados_enriquecidos,
+                    "embedding": embedding
+                })
 
         return documentos_processados
 
