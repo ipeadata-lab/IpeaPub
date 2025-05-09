@@ -1,8 +1,5 @@
-from typing import Dict, Any, List, Optional, Tuple
-from langchain.prompts import PromptTemplate
-from langchain.retrievers.multi_query import MultiQueryRetriever
+from typing import Dict, Any, List, Optional
 import requests
-import json
 
 from src.vector_db.chroma_client import ChromaDB
 from src.embeddings.modelo_texto import ModeloEmbeddingTexto

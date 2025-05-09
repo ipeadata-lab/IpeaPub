@@ -1,8 +1,6 @@
 from transformers import AutoTokenizer, AutoModelForTokenClassification, pipeline
 import torch
-from typing import List, Dict, Any, Tuple, Union
-import numpy as np
-import torch.nn.functional as F  # Import for softmax
+from typing import List, Dict, Any
 
 from src.config import MODELO_NER
 

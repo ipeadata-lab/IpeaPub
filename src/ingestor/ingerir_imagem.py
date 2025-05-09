@@ -1,9 +1,8 @@
 import json
-from typing import Dict, Any, List, Union
+from typing import Dict, Any, List
 import os
-from pathlib import Path
 from PIL import Image
-from transformers import AutoProcessor, AutoModelForImageTextToText, AutoTokenizer
+from transformers import AutoProcessor, AutoModelForImageTextToText
 import torch
 
 from src.embeddings.modelo_imagem import ModeloEmbeddingImagem
@@ -80,7 +79,7 @@ class IngestorImagem:
             else:
                 metadados_base = {}
 
-        documentos_processados = []
+        documentos_processados: List[Dict[str, Any]] = []
         # Processar cada imagem
         imagens = dados.get("images", [])
         for idx, imagem in enumerate(imagens):

@@ -26,8 +26,6 @@ class ModeloEmbeddingImagem:
             Array numpy com os embeddings
         """
 
-        imagens_processadas = []
-
         if isinstance(imagens, (str, Path)):
             imagens = [Image.open(imagens)]
         elif isinstance(imagens, list) and all(isinstance(img, (str, Path)) for img in imagens):
@@ -65,7 +63,7 @@ class ModeloEmbeddingImagem:
             text_embeddings = self.modelo.get_text_features(**inputs)
             
         # Normalizar os embeddings
-        embeddings = text_embeddings.cpu().numpy()
+        embeddings: np.ndarray = text_embeddings.cpu().numpy()
         embeddings = embeddings / np.linalg.norm(embeddings, axis=1, keepdims=True)
 
         return embeddings

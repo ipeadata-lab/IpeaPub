@@ -1,5 +1,5 @@
 import argparse
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 
 from src.ingestor.ingerir_texto import IngestorTexto
 from src.ingestor.ingerir_imagem import IngestorImagem
@@ -59,7 +59,7 @@ def ingerir_dados(dir: str = DATA_DIR) -> None:
     
     print("\nIngestão de dados concluída!")
 
-def consultar_rag(query: str, limite: int = 5, content_types: Optional[List[str]] = None) -> None:
+def consultar_rag(query: str, limite: int = 5, content_types: Optional[List[str]] = None) -> Dict[str, Any]:
     """
     Realiza uma consulta usando o modelo RAG.
     
