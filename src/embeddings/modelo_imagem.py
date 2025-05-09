@@ -10,7 +10,7 @@ from src.config import MODELO_EMBEDDING_IMAGEM
 class ModeloEmbeddingImagem:
     def __init__(self, modelo: str = MODELO_EMBEDDING_IMAGEM):
         self.modelo = CLIPModel.from_pretrained(modelo)
-        self.processador = CLIPProcessor.from_pretrained(modelo)
+        self.processador = CLIPProcessor.from_pretrained(modelo, use_fast=False)
         self.dispositivo = "cuda" if torch.cuda.is_available() else "cpu"
         self.modelo.to(self.dispositivo)
         print(f"Modelo de embedding de imagem carregado: {modelo}")

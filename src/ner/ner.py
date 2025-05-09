@@ -6,12 +6,11 @@ from src.config import MODELO_NER
 
 class ModeloNER:
     def __init__(self, modelo: str = MODELO_NER):
-        self.tokenizer = AutoTokenizer.from_pretrained(modelo)
+        self.tokenizer = AutoTokenizer.from_pretrained(modelo, model_max_length=512)
         self.modelo = AutoModelForTokenClassification.from_pretrained(modelo)
         self.pipeline = pipeline("ner", model=self.modelo, tokenizer=self.tokenizer, aggregation_strategy="first")
         self.dispositivo = "cuda" if torch.cuda.is_available() else "cpu"
         self.modelo.to(self.dispositivo)
-        self.id2label = self.modelo.config.id2label
         print(f"Modelo NER carregado: {modelo}")
     
     def extrair_entidades(self, texto: str) -> Dict[str, List]:
@@ -24,10 +23,15 @@ class ModeloNER:
         Returns:
             Lista de dicionários com as entidades extraídas e suas respectivas classes.
         """
-        if len(texto) > 5000:
-            texto = texto[:5000]  # Limitar o tamanho do texto para evitar problemas de memória
 
-        entidades_cruas = self.pipeline(texto)
+        tokens = self.tokenizer(
+            texto,
+            truncation=True,
+            return_tensors="pt",
+        )
+        texto_truncado = self.tokenizer.decode(tokens["input_ids"][0], skip_special_tokens=True)
+        entidades_cruas = self.pipeline(texto_truncado)
+
         entidades = {}
         for entidade in entidades_cruas:
             if len(entidade["word"]) < 2 and not entidade["word"].isupper():
