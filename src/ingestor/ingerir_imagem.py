@@ -111,6 +111,8 @@ class IngestorImagem:
                         "embedding_imagem": embedding_imagem,
                         "embedding_texto": embedding_texto
                     })
+                else: 
+                    print(f"Legenda não gerada para a imagem {imagem['ref']}")
 
         return documentos_processados
     

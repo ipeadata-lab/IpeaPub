@@ -132,6 +132,8 @@ class ChromaDB:
             collection = self.collection_imagem
         elif tipo_collection == "table":
             collection = self.collection_tabela
+        else:
+            raise ValueError("Tipo de coleção inválido. Use 'text', 'image' ou 'table'.")
 
         resultados = collection.query(
             query_embeddings=query,

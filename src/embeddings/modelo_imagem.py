@@ -49,7 +49,7 @@ class ModeloEmbeddingImagem:
         Útil para realizar buscas multimodais (texto -> imagem)
         
         Args:
-            text: Texto ou lista de textos
+            textos: Texto ou lista de textos
             
         Returns:
             Array numpy com os embeddings
