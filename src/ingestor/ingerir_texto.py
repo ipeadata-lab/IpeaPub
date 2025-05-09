@@ -51,10 +51,10 @@ class IngestorTexto:
         if "pages" in dados and isinstance(dados["pages"], list):
             for i, pagina in enumerate(dados["pages"]):
                 if isinstance(pagina, dict) and "content" in pagina:
-                    metadadados_pagina = metadados_base.copy()
-                    metadadados_pagina["page_number"] = pagina.get("page_number", i + 1)
+                    metadados_pagina = metadados_base.copy()
+                    metadados_pagina["page_number"] = pagina.get("page_number", i + 1)
                     conteudo_paginas.append({
-                        "metadados": metadadados_pagina,
+                        "metadados": metadados_pagina,
                         "conteudo": pagina["content"]
                     })
 
