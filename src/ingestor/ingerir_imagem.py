@@ -115,7 +115,7 @@ class IngestorImagem:
 
         return documentos_processados
     
-    def processar_diretorio(self, diretorio: str = IMAGES_DIR) -> List[Dict[str, Any]]:
+    def processar_diretorio(self, diretorio: str = IMAGES_DIR) -> List[List[Dict[str, Any]]]:
         """
         Processa todas as imagens dentro de um diretório conforme a estrutura do projeto.
         

@@ -52,7 +52,7 @@ class IngestorTexto:
             for i, pagina in enumerate(dados["pages"]):
                 if isinstance(pagina, dict) and "content" in pagina:
                     metadadados_pagina = metadados_base.copy()
-                    metadadados_pagina["pageNumber"] = i + 1
+                    metadadados_pagina["page_number"] = pagina.get("page_number", i + 1)
                     conteudo_paginas.append({
                         "metadados": metadadados_pagina,
                         "conteudo": pagina["content"]
@@ -69,7 +69,7 @@ class IngestorTexto:
 
             for i, chunk in enumerate(chunks):
                 metadados_chunk = metadados.copy()
-                metadados_chunk["chunkId"] = i
+                metadados_chunk["chunk_id"] = i
 
                 metadados_enriquecidos = self.modelo_ner.enriquecer_metadados(chunk, metadados_chunk)
 
@@ -86,7 +86,7 @@ class IngestorTexto:
 
         return documentos_processados
 
-    def processar_diretorio(self, diretorio: str) -> List[Dict[str, Any]]:
+    def processar_diretorio(self, diretorio: str) -> List[List[Dict[str, Any]]]:
         """
         Processa todos os arquivos JSON em um diretório e retorna uma lista de dicionários com os dados.
         
