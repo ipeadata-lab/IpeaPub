@@ -86,7 +86,7 @@ class IngestorTexto:
 
         return documentos_processados
 
-    def processar_diretorio(self, diretorio: str) -> List[List[Dict[str, Any]]]:
+    def processar_diretorio(self, diretorio: str) -> List[Dict[str, Any]]:
         """
         Processa todos os arquivos JSON em um diretório e retorna uma lista de dicionários com os dados.
         

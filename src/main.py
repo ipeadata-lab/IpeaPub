@@ -1,4 +1,5 @@
 import argparse
+import time
 from typing import List, Optional, Dict, Any
 
 from src.ingestor.ingerir_texto import IngestorTexto
@@ -20,43 +21,45 @@ def ingerir_dados(dir: str = DATA_DIR) -> None:
     ingestor_imagem = IngestorImagem()
     ingestor_tabela = IngestorTabela()
 
-    # Ingestão de texto
-    print("\nProcessando textos dos arquivos...")
-    textos_ingeridos = ingestor_texto.processar_diretorio(dir)
-
-    # Ingestão de imagem
-    print("\nProcessando imagens dos arquivos...")
-    imagens_ingeridas = ingestor_imagem.processar_diretorio(dir)
-
-    # Ingestão de tabela
-    print("\nProcessando tabelas dos arquivos...")
-    tabelas_ingeridas = ingestor_tabela.processar_diretorio(dir)
-
     # Inicializar banco de dados vetorial
     if VECTOR_DB == "chroma":
         banco = ChromaDB()
     else:
         raise ValueError(f"Banco de dados vetorial {VECTOR_DB} ainda não implementado.")
-    
 
-    # Inserir documentos de texto
-    print("Inserindo documentos de texto no banco vetorial...")
-    for arquivo in textos_ingeridos:
-        for documento in arquivo:
+    # Ingestão de texto
+    tempo = time.time()
+    print("\nProcessando textos dos arquivos...")
+    textos_ingeridos = ingestor_texto.processar_diretorio(dir)
+
+    # Inserir documentos no banco de dados
+    print("Inserindo documentos no banco de dados...")
+    for documento in textos_ingeridos:
             banco.inserir_documento(documento)
+    print(f"Textos processados em {time.time() - tempo:.2f} segundos.")
+
+    # Ingestão de imagem
+    tempo = time.time()
+    print("\nProcessando imagens dos arquivos...")
+    imagens_ingeridas = ingestor_imagem.processar_diretorio(dir)
+
+    # Inserir documentos de imagem
+    print("Inserindo documentos de imagem no banco vetorial...")
+    for documento in imagens_ingeridas:
+        banco.inserir_imagem(documento)
+    print(f"Imagens processadas em {time.time() - tempo:.2f} segundos.")
+
+    # Ingestão de tabela
+    tempo = time.time()
+    print("\nProcessando tabelas dos arquivos...")
+    tabelas_ingeridas = ingestor_tabela.processar_diretorio(dir)
 
     # Inserir documentos de tabela
     print("Inserindo documentos de tabela no banco vetorial...")
-    for arquivo in tabelas_ingeridas:
-        for documento in arquivo:
-            banco.inserir_documento(documento)
-    
-    # Inserir documentos de imagem
-    print("Inserindo documentos de imagem no banco vetorial...")
-    for arquivo in imagens_ingeridas:
-        for documento in arquivo:
-            banco.inserir_documento(documento)
-    
+    for documento in tabelas_ingeridas:
+        banco.inserir_tabela(documento)
+    print(f"Tabelas processadas em {time.time() - tempo:.2f} segundos.")
+
     print("\nIngestão de dados concluída!")
 
 def consultar_rag(query: str, limite: int = 5, content_types: Optional[List[str]] = None) -> Dict[str, Any]:

@@ -59,7 +59,7 @@ class IngestorTabela:
 
         return documentos_processados
 
-    def processar_diretorio(self, diretorio: str = DATA_DIR) -> List[List[Dict[str, Any]]]:
+    def processar_diretorio(self, diretorio: str = DATA_DIR) -> List[Dict[str, Any]]:
         """
         Processa todas as tabelas nos arquivos JSON dentro de um diretório.
         """
