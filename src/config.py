@@ -18,7 +18,7 @@ OLLAMA_MODEL = "llama3.2" # modelo de linguagem a ser utilizado
 MODELO_EMBEDDING_TEXTO = "sentence-transformers/paraphrase-multilingual-mpnet-base-v2" # modelo de embedding para texto
 MODELO_EMBEDDING_IMAGEM = "openai/clip-vit-base-patch16" # modelo de embedding para imagem
 MODELO_NER = "lfcc/bert-portuguese-ner" # modelo de NER (Reconhecimento de Entidades Nomeadas)
-MODELO_VLM = "microsoft/git-base"
+MODELO_VLM = "Salesforce/blip-image-captioning-base"
 
 # Parâmetros de chunking
 TAMANHO_CHUNK = 1000
