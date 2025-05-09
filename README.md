@@ -59,7 +59,7 @@ from src.main import consultar_rag, ingerir_dados
 # Para ingestão de dados no banco, caminho padrão DATA_DIR = ./data
 diretorio = "caminho/para/dados"
 ingerir_dados(
-    dir=diretorio | DATA_DIR # Caminho para a pasta contendo os dados processados
+    dir=diretorio or DATA_DIR # Caminho para a pasta contendo os dados processados
 )
 
 # Realizando a consulta
