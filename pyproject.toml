@@ -31,6 +31,7 @@ pillow = "^10.4.0"
 transformers = "^4.51.3"
 langchain = "^0.3.25"
 chromadb = "^1.0.8"
+streamlit = "^1.45.0"
 
 [tool.poetry.group.dev.dependencies]
 setuptools = "^75.1.0"

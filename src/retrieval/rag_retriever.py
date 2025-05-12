@@ -1,20 +1,18 @@
+# src/retrieval/rag_retriever.py
+
 from typing import Dict, Any, List, Optional
 import requests
 
 from src.vector_db.chroma_client import ChromaDB
-from src.embeddings.modelo_texto import ModeloEmbeddingTexto
-from src.embeddings.modelo_imagem import ModeloEmbeddingImagem
 from src.config import OLLAMA_API_URL, OLLAMA_MODEL, VECTOR_DB
+from src.modelos import manager
 
 class RAGRetriever:
-    def __init__(self, vector_db: str = VECTOR_DB):
-        self.modelo_embedding_texto = ModeloEmbeddingTexto()
-        self.modelo_embedding_imagem = ModeloEmbeddingImagem()
+    def __init__(self):
+        self.modelo_embedding_texto = manager.modelo_texto
+        self.modelo_embedding_imagem = manager.modelo_imagem
+        self.vector_db = manager.vector_db
 
-        if vector_db == "chroma":
-            self.vector_db = ChromaDB()
-        else:
-            raise ValueError(f"Banco de dados vetorial {vector_db} ainda não implementado.")
         
     def perguntar_ollama(self, prompt: str, modelo: str = OLLAMA_MODEL) -> str:
         """
@@ -64,9 +62,8 @@ class RAGRetriever:
         todos_resultados = []
 
         todos_resultados = self.vector_db.busca_completa(
-            query=query,
-            modelo_embedding_texto=self.modelo_embedding_texto,
-            modelo_embedding_imagem=self.modelo_embedding_imagem,
+            query=self.modelo_embedding_texto.gerar_embedding(query).tolist(),
+            query_imagem=self.modelo_embedding_imagem.gerar_embedding_textual(query)[0].tolist(),
             top_k=limite,
             content_types=content_types
         )
@@ -109,10 +106,10 @@ class RAGRetriever:
         prompt = f"""
 Você é um assistente de pesquisa especializado em responder perguntas com base nas informações fornecidas.
         
-CONTEXTO:
+Contexto:
 {contexto_formatado}
         
-PERGUNTA:
+Pergunta:
 {query}
         
 Com base APENAS nas informações fornecidas no CONTEXTO acima, responda à PERGUNTA de forma completa e detalhada.

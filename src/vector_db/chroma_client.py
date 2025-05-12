@@ -1,10 +1,9 @@
+# src/vector_db/chroma_client.py
+
 import chromadb
 from typing import List, Dict, Any, Optional
 import os
-
 from src.config import VECTOR_DB_DIR
-from src.embeddings.modelo_texto import ModeloEmbeddingTexto
-from src.embeddings.modelo_imagem import ModeloEmbeddingImagem
 
 class ChromaDB:
     def __init__(self, collection_name: str = "rag_pub", persist_directory: str = VECTOR_DB_DIR):
@@ -163,9 +162,8 @@ class ChromaDB:
         return processados
     
     def busca_completa(self, 
-                      query: str, 
-                      modelo_embedding_texto: ModeloEmbeddingTexto ,
-                      modelo_embedding_imagem= ModeloEmbeddingImagem | None,
+                      query: List[float], 
+                      query_imagem: List[float] = None,
                       top_k: int = 5,
                       content_types: Optional[List[str]] = None,
     ) -> List[Dict[str, Any]]:
@@ -173,7 +171,7 @@ class ChromaDB:
         Realiza uma pesquisa híbrida por texto
         
         Args:
-            query: Texto da consulta
+            query: embedding da consulta
             modelo_embedding_texto: Modelo de embedding de texto
             modelo_embedding_imagem: Modelo de embedding de imagem (opcional)
             top_k: Número máximo de resultados
@@ -183,22 +181,20 @@ class ChromaDB:
             Lista de documentos similares
         """
 
-        embedding_texto: List[float] = modelo_embedding_texto.gerar_embedding(query).tolist()
 
         resultados = []
 
         if not content_types or "text" in content_types:
-            resultados_texto = self.buscar(query=embedding_texto, top_k=top_k, tipo_collection="text")
+            resultados_texto = self.buscar(query=query, top_k=top_k, tipo_collection="text")
             resultados.extend(resultados_texto[:top_k])
         if not content_types or "table" in content_types:
-            resultados_tabela = self.buscar(query=embedding_texto, top_k=top_k, tipo_collection="table")
+            resultados_tabela = self.buscar(query=query, top_k=top_k, tipo_collection="table")
             resultados.extend(resultados_tabela[:top_k])
         
-        if (not content_types or "image" in content_types) and modelo_embedding_imagem:
-            embedding_imagem: List[float] = modelo_embedding_imagem.gerar_embedding_textual(query)[0].tolist()
-
-            resultados_imagem = self.buscar(query=embedding_imagem, top_k=top_k, tipo_collection="image")
+        if (not content_types or "image" in content_types) and query_imagem is not None:
+            resultados_imagem = self.buscar(query=query_imagem, top_k=top_k, tipo_collection="image")
             resultados.extend(resultados_imagem[:top_k])
             
         resultados.sort(key=lambda x: x["distancia"], reverse=True)
+
         return resultados
