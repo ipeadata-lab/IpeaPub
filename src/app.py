@@ -10,6 +10,7 @@ if project_root not in sys.path:
 import streamlit as st
 from src.main import Assistente
 from langchain_community.chat_message_histories import StreamlitChatMessageHistory
+from src.config import IMAGES_DIR
 
 # Configure the page
 st.set_page_config(
@@ -92,19 +93,20 @@ def main():
                         content_type = metadados.get("content_type", "texto")
                         filename = metadados.get("filename", "desconhecido")
                         texto = doc.get("texto", "Texto não disponível")
-
                         # Display relevant result
                         if content_type == "text":
                             st.markdown(f"**{i + 1}.** Fonte: {filename} (Página {page}) | Texto")
 
                         if content_type == "table":
                             st.markdown(f"**{i + 1}.** Fonte: {filename} (Página {page}) | Tabela")
-                            st.markdown(f"```{texto}```")
+                            st.markdown(f"{texto}")
 
                         # if image, display the image in chat
                         if content_type == "image":
-                            st.markdown(f"**{i + 1}.** Fonte: {filename} (Página {page}) | Imagem")
-                            st.image(metadados.get("ref", ""), caption=metadados.get("caption", ""), use_column_width=True)
+
+                            st.markdown(f"**{i + 1}.** Fonte: {filename} (Página {metadados.get("page", "desconhecida")}) | Imagem")
+                            image_path = os.path.join(IMAGES_DIR, metadados.get("ref", ""))
+                            st.image(image_path, caption=metadados.get("caption", ""), width=300)
                 
                 except Exception as e:
                     error_message = f"Erro ao processar a consulta: {str(e)}"
