@@ -14,7 +14,7 @@ class ChromaDB:
             name=f"{collection_name}_text",
             metadata={"description": "Textos de documentos PDF"}
         )
-        
+
         self.collection_imagem = self.client.get_or_create_collection(
             name=f"{collection_name}_image",
             metadata={"description": "Imagens com legendas geradas"}
@@ -169,18 +169,16 @@ class ChromaDB:
     ) -> List[Dict[str, Any]]:
         """
         Realiza uma pesquisa híbrida por texto
-        
+
         Args:
             query: embedding da consulta
-            modelo_embedding_texto: Modelo de embedding de texto
-            modelo_embedding_imagem: Modelo de embedding de imagem (opcional)
+            query_imagem: embedding da consulta de imagem
             top_k: Número máximo de resultados
             content_types: Lista de tipos de conteúdo para incluir na pesquisa
             
         Returns:
             Lista de documentos similares
         """
-
 
         resultados = []
 
@@ -194,7 +192,8 @@ class ChromaDB:
         if (not content_types or "image" in content_types) and query_imagem is not None:
             resultados_imagem = self.buscar(query=query_imagem, top_k=top_k, tipo_collection="image")
             resultados.extend(resultados_imagem[:top_k])
-            
+
         resultados.sort(key=lambda x: x["distancia"], reverse=True)
 
         return resultados
+

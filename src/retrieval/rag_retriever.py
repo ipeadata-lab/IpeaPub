@@ -13,7 +13,7 @@ class RAGRetriever:
         self.modelo_embedding_imagem = manager.modelo_imagem
         self.vector_db = manager.vector_db
 
-        
+
     def perguntar_ollama(self, prompt: str, modelo: str = OLLAMA_MODEL) -> str:
         """
         Faz uma pergunta ao modelo de linguagem Ollama.
@@ -67,9 +67,7 @@ class RAGRetriever:
             top_k=limite,
             content_types=content_types
         )
-    
-        # Ordenar e limitar resultados
-        todos_resultados.sort(key=lambda x: x["distancia"], reverse=True)
+
         return todos_resultados
     
     def criar_prompt(self, query: str, contexto: List[Dict[str, Any]]) -> str:
@@ -105,16 +103,20 @@ class RAGRetriever:
         contexto_formatado += "\n\n"
         prompt = f"""
 Você é um assistente de pesquisa especializado em responder perguntas com base nas informações fornecidas.
-        
+
 Contexto:
+<Contexto>
 {contexto_formatado}
-        
+</Contexto>
+
 Pergunta:
+<Pergunta>
 {query}
-        
-Com base APENAS nas informações fornecidas no CONTEXTO acima, responda à PERGUNTA de forma completa e detalhada.
+</Pergunta>
+
+Com base APENAS nas informações fornecidas no contexto acima, responda à pergunta de forma completa e detalhada.
 Mencione as fontes das informações na sua resposta.
-Se o CONTEXTO não contiver informações suficientes para responder completamente, indique quais partes você não consegue responder e por quê.
+Se o contexto não contiver informações suficientes para responder completamente, indique quais partes você não consegue responder e por quê.
 """
         return prompt
 

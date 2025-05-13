@@ -80,7 +80,8 @@ def main():
                 try:
                     # Call RAG function
                     resposta = main_assistant.consultar_rag(prompt)
-                    
+                    print(resposta)
+
                     # Display and store RAG response
                     st.markdown(resposta['resposta'])
                     msgs.add_ai_message(resposta['resposta'])

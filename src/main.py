@@ -3,9 +3,6 @@
 import time
 from typing import List, Optional, Dict, Any
 
-from src.ingestor.ingerir_texto import IngestorTexto
-from src.ingestor.ingerir_imagem import IngestorImagem
-from src.ingestor.ingerir_tabela import IngestorTabela
 from src.vector_db.chroma_client import ChromaDB
 from src.retrieval.rag_retriever import RAGRetriever
 from src.config import DATA_DIR, VECTOR_DB
@@ -85,14 +82,15 @@ class Assistente:
 
         resultados = self.rag_retriever.responder(query, limite, content_types)
         
-        print("\nResultados da consulta:")
-        print(resultados["resposta"])
+        #print("\nResultados da consulta:")
+        #print(resultados["resposta"])
 
-        print("\nResultados relevantes:")
-        for i, doc in enumerate(resultados["contexto"]):
-            content_type: str = doc.get("metadados", {}).get("content_type", "text")
-            fonte = doc.get("metadados", {}).get("filename", "desconhecido")
-            print(f"{i+1}. [{content_type.upper()}] Fonte: {fonte}, Score: {doc['distancia']:.4f}")
+        #print("\nResultados relevantes:")
+        #for i, doc in enumerate(resultados["contexto"]):
+        #    content_type: str = doc.get("metadados", {}).get("content_type", "text")
+        #    fonte = doc.get("metadados", {}).get("filename", "desconhecido")
+        #    print(f"{i+1}. [{content_type.upper()}] Fonte: {fonte}, Score: {doc['distancia']:.4f}")
 
         return resultados
+
 

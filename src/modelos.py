@@ -5,7 +5,6 @@ from src.vector_db.chroma_client import ChromaDB
 from src.ner.ner import ModeloNER
 from src.embeddings.modelo_texto import ModeloEmbeddingTexto
 from src.embeddings.modelo_imagem import ModeloEmbeddingImagem
-from src.config import DATA_DIR, VECTOR_DB
 
 class ModelManager:
     _instance = None
@@ -22,6 +21,6 @@ class ModelManager:
             cls._instance.ingestor_tabela = IngestorTabela()
             cls._instance.vector_db = ChromaDB()
         return cls._instance
-    
+
 manager = ModelManager()
 print("Modelos e ingestors carregados com sucesso.")
