@@ -5,3 +5,6 @@ src/vector_db/vector_database
 to_do.md
 .conda
 test.py
+*.log
+logs/
+temp/
