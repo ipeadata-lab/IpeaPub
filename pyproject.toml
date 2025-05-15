@@ -1,0 +1,43 @@
+[tool.poetry]
+name = "rag_publicacoes"
+version = "0.1.1"
+description = "Sistema RAG Multimodal para processamento do conteúdo presente no repositório do conhecimento do Ipea."
+homepage = "https://github.com/ipeadata-lab/rag_publicacoes"
+license = "MIT"
+authors = ["Rafael Dias Ghiorzi <rafael.ghiorzi@gmail.com>"]
+keywords = ["ipea", "rag", "multimodal", "publicacoes"]
+readme = "README.md"
+repository = "https://github.com/ipeadata-lab/rag_publicacoes"
+packages = [{include = "rag_publicacoes"}]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Environment :: GPU :: NVIDIA CUDA",
+    "Intended Audience :: Science/Research",
+    "Natural Language :: Portuguese (Brazilian)",
+    "Operating System :: Microsoft :: Windows :: Windows 10",
+    "Operating System :: Microsoft :: Windows :: Windows 11",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Scientific/Engineering :: Image Recognition",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "License :: OSI Approved :: MIT License",
+]
+
+[tool.poetry.dependencies]
+python = "^3.12.0, <3.13.0"
+sentence-transformers = "^4.1.0"
+torch = "^2.7.0"
+numpy = "^1.26.4"
+pillow = "^10.4.0"
+transformers = "^4.51.3"
+langchain = "^0.3.25"
+chromadb = "^1.0.8"
+streamlit = "^1.45.0"
+
+[tool.poetry.group.dev.dependencies]
+setuptools = "^75.1.0"
+
+[tool.poetry.scripts]
+ragpub = "rag_publicacoes.src.main:main"
+
+[tool.poetry.urls]
+"Bug Tracker" = "https://github.com/ipeadata-lab/rag_publicacoes/issues"

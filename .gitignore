@@ -1,3 +1,10 @@
+__pycache__/
+*.py[cod]
+data/
+src/vector_db/vector_database
+to_do.md
+.conda
+test.py
 *.log
-/data
-/.venv
+logs/
+temp/
