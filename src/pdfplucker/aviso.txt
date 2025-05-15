@@ -1,3 +1,0 @@
-Módulo ainda não implementado
-
-Criar uma função que devolve os chunks do texto com hybrid chunking do docling enquanto também salva o json
