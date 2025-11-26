@@ -1,14 +1,17 @@
 [tool.poetry]
-name = "rag_publicacoes"
-version = "0.1.1"
-description = "Sistema RAG Multimodal para processamento do conteúdo presente no repositório do conhecimento do Ipea."
-homepage = "https://github.com/ipeadata-lab/rag_publicacoes"
+name = "ipeapub"
+version = "0.0.1"
+description = "Sistema multiagente assistente de conhecimento das publicações do Ipea."
+homepage = "https://github.com/ipeadata-lab/IpeaPub"
 license = "MIT"
 authors = ["Rafael Dias Ghiorzi <rafael.ghiorzi@gmail.com>"]
-keywords = ["ipea", "rag", "multimodal", "publicacoes"]
+keywords = ["RAG", "Ipea", "Publicações", "Assistente de Conhecimento", "Multiagente"]
 readme = "README.md"
-repository = "https://github.com/ipeadata-lab/rag_publicacoes"
+repository = "https://github.com/ipeadata-lab/IpeaPub"
 packages = [{include = "rag_publicacoes"}]
+
+////////////////// MUDANÇAS A SEREM FEITAS ABAIXO DESSE COMENTÁRIO //////////////////
+
 classifiers = [
     "Development Status :: 2 - Pre-Alpha",
     "Environment :: GPU :: NVIDIA CUDA",
