@@ -1,23 +1,10 @@
 import requests
-import hashlib
 from datetime import datetime, timezone
 from src.db.banco1 import inserir_documento, buscar_documento, atualizar_documento
-from src.ingestao.cleaner import clean_item
+from src.ingestor.utils import clean_item
 
 BASE = "https://repositorio.ipea.gov.br/server/api/discover/browses/dateissued/items"
 TOTAL_PAGES = 860
-
-def _baixar_pdf(url: str) -> bytes:
-	"""Baixa o PDF do link fornecido e retorna os bytes."""
-	r = requests.get(url, timeout=30)
-	r.raise_for_status()
-	return r.content
-
-def hash_bytes(content: bytes) -> str:
-	"""Calcula o hash SHA256 dos bytes fornecidos."""
-	hasher = hashlib.sha256()
-	hasher.update(content)
-	return hasher.hexdigest()
 
 def _buscar_pagina(page_number: int):
     """Busca os itens brutos da API para a página fornecida."""
@@ -64,20 +51,6 @@ def processar_pagina(pagina: int):
             bruto = _extrair_campos(raw)
             item = clean_item(bruto)
 
-            pdf_url = f"https://repositorio.ipea.gov.br/bitstreams/{item['id']}/download"
-            doc_id = item["id"]
-
-            existente = buscar_documento(doc_id)
-
-            # Baixar PDF temporario e calcular hash
-            pdf_bytes = _baixar_pdf(pdf_url)
-            pdf_hash = hash_bytes(pdf_bytes)
-
-            # Se existente e hash igual, pular
-            if existente and existente["hash_pdf"] == pdf_hash:
-                print(f"Documento {doc_id} já existe com hash igual, pulando.")
-                continue
-
             # prepara estrutura SQLite (Banco 1)
             doc = {
                 "id": item["id"],
@@ -87,19 +60,14 @@ def processar_pagina(pagina: int):
                 "tipo_conteudo": item.get("tipo") or item.get("tipo_conteudo") or "",
                 "resumo": item["resumo"],
                 "palavras_chave": item["palavras_chave"],
-                "link_pdf": pdf_url,
-                "link_uri": item["handle"],
-                "hash_pdf": pdf_hash,
+                "link_pdf": item["handle"],
                 "status_ingestao": "pendente",
                 "data_ingestao": datetime.now(timezone.utc).isoformat(),
             }
 
-            if existente:
-                print(f"Atualizando documento {doc_id} no banco de dados.")
-                atualizar_documento(doc)
-            else:
-                print(f"Inserindo novo documento {doc_id} no banco de dados.")
-                inserir_documento(doc)
+
+            print(f"Inserindo novo documento {item['id']} no banco de dados.")
+            inserir_documento(doc)
     
             count += 1
 

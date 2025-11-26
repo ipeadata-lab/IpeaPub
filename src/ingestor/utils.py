@@ -1,3 +1,10 @@
+"""
+Todas as funções utilitárias para o ingestor
+
+- modelos de visão para legendar imagens e tabelas
+- cleaner de texto extraído
+"""
+
 import re
 from datetime import datetime, timezone
 

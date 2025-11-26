@@ -3,7 +3,6 @@ from pathlib import Path
 
 # Banco 1: SQLite para os metadados principais dos documentos
 
-
 DB_PATH = Path(__file__).resolve().parents[2] / "data" / "banco1.db"
 
 def conectar():
@@ -27,8 +26,6 @@ def criar_tabela():
             resumo TEXT,
             palavras_chave TEXT,
             link_pdf TEXT,
-            link_uri TEXT,
-            hash_pdf TEXT,
             status_ingestao TEXT,
             data_ingestao TEXT
         );
@@ -44,10 +41,10 @@ def inserir_documento(document: dict):
     cursor.execute("""
         INSERT OR REPLACE INTO documentos (
             id, titulo, autores, ano, tipo_conteudo,
-            resumo, palavras_chave, link_pdf, link_uri, hash_pdf,
+            resumo, palavras_chave, link_pdf,
             status_ingestao, data_ingestao
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         document.get("id"),
         document.get("titulo"),
@@ -57,8 +54,6 @@ def inserir_documento(document: dict):
         document.get("resumo"),
         document.get("palavras_chave"),
         document.get("link_pdf"),
-        document.get("link_uri"),
-        document.get("hash_pdf"),
         document.get("status_ingestao"),
         document.get("data_ingestao"),
     ))
@@ -83,8 +78,8 @@ def atualizar_documento(document: dict):
     cursor.execute("""
         UPDATE documentos
         SET titulo = ?, autores = ?, ano = ?, tipo_conteudo = ?,
-            resumo = ?, palavras_chave = ?, link_pdf = ?, link_uri = ?,
-            hash_pdf = ?, status_ingestao = ?, data_ingestao = ?
+            resumo = ?, palavras_chave = ?, link_pdf = ?,
+            status_ingestao = ?, data_ingestao = ?
         WHERE id = ?
     """, (
         document.get("titulo"),
@@ -94,8 +89,6 @@ def atualizar_documento(document: dict):
         document.get("resumo"),
         document.get("palavras_chave"),
         document.get("link_pdf"),
-        document.get("link_uri"),
-        document.get("hash_pdf"),
         document.get("status_ingestao"),
         document.get("data_ingestao"),
         document.get("id"),
@@ -103,3 +96,29 @@ def atualizar_documento(document: dict):
 
     conn.commit()
     conn.close()
+
+def buscar_pendente():
+    """Buscar um documento com ingestão pendente. Retorna None se não houver."""
+    conn = conectar()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM documentos WHERE status_ingestao = 'pendente' LIMIT 1")
+    row = cursor.fetchone()
+    conn.close()
+    if not row:
+        return None
+    return dict(row)
+
+def atualizar_status(id: str, status: str):
+    conn = conectar()
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        UPDATE documentos
+        SET status_ingestao = ?
+        WHERE id = ?
+    """, (status, id))
+
+    conn.commit()
+    conn.close()
+
+criar_tabela()
