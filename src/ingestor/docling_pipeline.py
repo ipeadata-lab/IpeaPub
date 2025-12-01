@@ -1,10 +1,17 @@
+"""
+Aqui vai vir toda a lógica de extração de texto, imagens e tals
+
+"""
+from src.db.banco_metadados import atualizar_status
+from src.ingestor.docling_setup import converter_docling
+
+from docling_core.transforms.chunker.hybrid_chunker import HybridChunker
+
 import os
 import torch
 import tempfile
 import requests
-from urllib.parse import urljoin
-from bs4 import BeautifulSoup
-from src.db.banco1 import buscar_pendente
+
 
 from docling.datamodel.base_models import InputFormat
 from docling.document_converter import DocumentConverter, PdfFormatOption
@@ -16,67 +23,6 @@ from docling.datamodel.document import ConversionResult
 #   1. CONFIGURAÇÕES GERAIS
 # ============================================================
 
-BASE_URL = "https://repositorio.ipea.gov.br"
-HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
-}
-
-
-# ============================================================
-#   2. CRAWLER DO PDF (IPEA)
-# ============================================================
-
-def baixar_pdf_real(link_pagina: str) -> bytes | None:
-    """
-    Recebe o link da página do documento no repositório do IPEA.
-    Identifica o botão de download, resolve redirecionamentos e retorna bytes do PDF.
-    """
-
-    print(f"[Crawler] Acessando página do documento:\n  {link_pagina}")
-
-    try:
-        resp = requests.get(link_pagina, headers=HEADERS, timeout=30)
-        resp.raise_for_status()
-    except Exception as e:
-        print(f"[Crawler] ERRO ao acessar página: {e}")
-        return None
-
-    soup = BeautifulSoup(resp.text, "html.parser")
-
-    # Procurar botão do tipo /bitstreams/<uuid>/download
-    a_tags = soup.find_all("a", href=True)
-    download_links = []
-    for a in a_tags:
-        href = a.get("href")
-        if not href:
-            continue
-        href = str(href)
-        if "bitstreams" in href and "download" in href:
-            download_links.append(href)
-
-    if not download_links:
-        print("[Crawler] Nenhum link de download encontrado na página.")
-        return None
-
-    download_url = urljoin(BASE_URL, download_links[0])
-    print(f"[Crawler] Botão de download encontrado:\n  {download_url}")
-
-    # Resolver download efetivo (pode virar /content ou baixar direto)
-    try:
-        r = requests.get(download_url, headers=HEADERS, allow_redirects=True, timeout=40)
-        r.raise_for_status()
-    except Exception as e:
-        print(f"[Crawler] ERRO ao baixar PDF real: {e}")
-        return None
-
-    # Validar PDF
-    if not r.content.startswith(b"%PDF"):
-        print("[Crawler] Conteúdo baixado não parece ser PDF real. Pode ser página 'Baixando...'")
-        # algumas páginas fazem meta refresh → tentar novamente
-        # ou acessar o botão final no HTML (mas em geral o requests já resolve)
-        pass
-
-    return r.content
 
 
 # ============================================================
@@ -164,4 +110,47 @@ def converter_docling() -> tuple[ConversionResult, str] | None:
     # Docling pode retornar doc ou wrapper
     return doc, doc_id
 
+
+
+
+
+
+# ============================================================
+#   5. PIPELINE COMPLETO
+# ============================================================
+
+def processar_documento() -> bool:
+    """
+    converte com Docling,
+    processa os resultados
+    atualiza status.
+    """
+
+    doc_tuple = converter_docling()
+    if not doc_tuple:
+        print("[Pipeline] Nenhum documento pendente para conversão.")
+        return False
+    
+    doc, doc_id = doc_tuple
+
+    if hasattr(doc, 'document'):
+        doc = doc.document
+    else:
+        print("[Pipeline] Aviso: objeto retornado não possui atributo 'document'.")
+        return False
+    
+
+    
+
+    print(f"\n=== PROCESSANDO DOCUMENTO {doc_id} ===")
+
+
+    # Aqui virá a lógica de processamento do documento
+    print("placeholder para a lógica de extração e processamento do documento...")
+
+    # No final, se tudo der certo, atualizar o status do documento para processado
+    atualizar_status(doc_id, "processado")
+    print(f"Documento processado para os bancos de dados!\n ID: {doc_id}\n")
+
+    return True
 
