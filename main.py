@@ -1,12 +1,27 @@
 from src.ingestor.docling_pipeline import DoclingPipeline
+from src.ingestor.scraper import Scraper
+import time
+import os
 
+TOTAL_PAGES = 860
 
 if __name__ == "__main__":
 
-    # for pagina in range(0, 2):  # Exemplo: processar as primeiras 2 páginas
-    #     processar_pagina(pagina)
-    #     print(f"Página {pagina} processada e dados inseridos no banco de dados banco1.db")
+    scraper = Scraper()
+    for i in range(0, 5):
+        scraper.processar_pagina(i)
+        print(f"Página {i} processada.")
+
+    time.sleep(10)
+
+    if os.name == "nt":
+        os.system('cls')
+    else:
+        os.system('clear')
 
     pipeline = DoclingPipeline()
-    sucesso = pipeline.processar_documento()
-
+    while True:
+        sucesso = pipeline.processar_documento()
+        if not sucesso:
+            break
+    print("Pipeline concluído.")

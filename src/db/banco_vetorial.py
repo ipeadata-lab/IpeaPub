@@ -81,18 +81,18 @@ class QdrantVectorDB:
 
     def ensure_collections(self) -> None:
         for name, params in COLLECTIONS.items():
-            if not self.client.get_collection(name):
-                try:
-                    has = self.client.get_collection(name)
-                except Exception:
-                    print(f"[Qdrant] Criando coleção '{name}'...")
-                    self.client.recreate_collection(
-                        collection_name=name,
-                        vectors_config=VectorParams(
-                            size=params["vector_size"],
-                            distance=params["distance"],
-                        )
+            try:
+                # get_collection raises if not found (local Qdrant), so catch and create
+                self.client.get_collection(name)
+            except Exception:
+                print(f"[Qdrant] Criando coleção '{name}'...")
+                self.client.create_collection(
+                    collection_name=name,
+                    vectors_config=VectorParams(
+                        size=params["vector_size"],
+                        distance=params["distance"],
                     )
+                )
 
     def delete_collection(self, name: str) -> None:
         self.client.delete_collection(name)
@@ -123,7 +123,7 @@ class QdrantVectorDB:
             collection: str,
             items: Iterable[Tuple[str, Dict[str, Any], List[float]]], 
             batch_size: int = 128) -> None:
-
+        batch: List[PointStruct] = []
         for pid, payload, vector in items:
             batch.append(PointStruct(id=pid, payload=payload, vector=vector))
             if len(batch) >= batch_size:
@@ -149,7 +149,7 @@ class QdrantVectorDB:
             doc_meta: metadados do documento (deve conter 'id')
             embedding: vetor de embedding
         """
-        pid = doc_meta.get("doc_id") or doc_meta.get("id")
+        pid = doc_meta.get("pid") or doc_meta.get("chunk_id")
         if not pid:
             raise ValueError("doc_meta deve conter 'id' ou 'doc_id'")
         
@@ -158,6 +158,8 @@ class QdrantVectorDB:
             "titulo": doc_meta.get("titulo", ""),
             "keywords": _ensure_list(doc_meta.get("palavras_chave")),
             "resumo": doc_meta.get("resumo", ""),
+            "handle": doc_meta.get("handle", ""),
+            "pagina": doc_meta.get("pagina", -1),
         }
 
         self._upsert_point("recomendacoes", pid, payload, embedding)
@@ -172,16 +174,18 @@ class QdrantVectorDB:
         O embedding deve juntar os campos do payload (conforme chunk_meta).
         
         Args:
-            chunk_meta: metadados do chunk (deve conter 'id', 'doc_id', 'texto', 'pagina')
+            chunk_meta: metadados do chunk (deve conter 'id', 'doc_id', 'texto')
             embedding: vetor de embedding
         """
-        pid = chunk_meta.get("chunk_id") or chunk_meta.get("id")
+        pid = chunk_meta.get("pid") or chunk_meta.get("chunk_id")
         if not pid:
-            raise ValueError("chunk_meta deve conter 'id' ou 'chunk_id'")
+            raise ValueError("chunk_meta deve conter 'pid' ou 'chunk_id'")
         
         payload = {
+            "pid": pid,
             "doc_id": chunk_meta.get("doc_id", ""),
             "texto": chunk_meta.get("texto", ""),
+            "handle": chunk_meta.get("handle", ""),
             "pagina": chunk_meta.get("pagina", -1),
         }
 
@@ -203,15 +207,24 @@ class QdrantVectorDB:
         self._upsert_point("imagens", pid, payload, embedding)
         
     def upsert_table(self, table_meta: Dict[str, Any], embedding: List[float]) -> None:
-        """table_meta esperado: {doc_id, pagina, caption, descricao_llm, table_markdown}
         """
-        pid = table_meta.get("id") or f"table::{table_meta.get('doc_id')}::{table_meta.get('pagina')}::{abs(hash(table_meta.get('caption') or ''))}"
+        Insere ou atualiza uma tabela vetorial.
+        O embedding deve juntar os campos do payload (conforme table_meta).
+        Args:
+            table_meta: metadados da tabela (deve conter 'pid' ou 'chunk_id')
+            embedding: vetor de embedding
+        """
+        pid = table_meta.get("pid") or table_meta.get("chunk_id")
+        if not pid:
+            raise ValueError("table_meta deve conter 'pid' ou 'chunk_id'")
+
         payload = {
-        "doc_id": table_meta.get("doc_id"),
-        "pagina": table_meta.get("pagina"),
-        "caption": table_meta.get("legenda"),
-        "descricao_llm": table_meta.get("descricao_llm"),
-        "table_markdown": table_meta.get("tabela_markdown"),
+            "pid": pid,
+            "doc_id": table_meta.get("doc_id"),
+            "pagina": table_meta.get("pagina"),
+            "descricao_llm": table_meta.get("descricao_llm"),
+            "tabela": table_meta.get("tabela"),
+            "handle": table_meta.get("handle"),
         }
         self._upsert_point("tabelas", pid, payload, embedding)
 

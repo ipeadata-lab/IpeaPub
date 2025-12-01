@@ -5,7 +5,6 @@ from src.ingestor.utils import clean_item
 from src.db.banco_metadados import MetadataDB
 
 BASE = "https://repositorio.ipea.gov.br/server/api/discover/browses/dateissued/items"
-TOTAL_PAGES = 860
 
 class Scraper:
     """

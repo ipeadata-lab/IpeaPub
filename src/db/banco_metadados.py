@@ -18,6 +18,7 @@ class MetadataDB:
     def __init__(self, db_path: Path | str = DB_PATH) -> None:
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        self.criar_tabela()
 
     def conectar(self) -> sqlite3.Connection:
         """Abre uma conexão com row_factory configurado para sqlite3.Row."""
