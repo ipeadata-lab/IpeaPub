@@ -10,15 +10,33 @@ from docling.datamodel.base_models import InputFormat
 from docling.datamodel.pipeline_options import PdfPipelineOptions
 from docling.document_converter import DocumentConverter, PdfFormatOption
 from docling.datamodel.accelerator_options import AcceleratorDevice, AcceleratorOptions
+from docling.datamodel.pipeline_options import (
+    PdfPipelineOptions,
+    EasyOcrOptions
+)
 
 from docling_core.types.doc.labels import DocItemLabel
+from docling_core.types.doc.document import DoclingDocument
 from docling_core.transforms.chunker.doc_chunk import DocChunk
+from docling_core.transforms.serializer.base import BaseDocSerializer
 from docling_core.transforms.chunker.hybrid_chunker import HybridChunker
+from docling_core.transforms.serializer.markdown import MarkdownTableSerializer
 from docling_core.transforms.chunker.tokenizer.huggingface import HuggingFaceTokenizer
+from docling_core.transforms.chunker.hierarchical_chunker import (
+    ChunkingDocSerializer,
+    ChunkingSerializerProvider
+)
 
 from src.db.banco_metadados import MetadataDB
 from src.ingestor.utils import baixar_pdf_real
 from src.db.banco_vetorial import QdrantVectorDB
+
+class MDTableSerializerProvider(ChunkingSerializerProvider):
+    def get_serializer(self, doc: DoclingDocument) -> BaseDocSerializer:
+        return ChunkingDocSerializer(
+            doc=doc,
+            table_serializer=MarkdownTableSerializer()
+        )
 
 class DoclingPipeline:
     """
@@ -48,6 +66,11 @@ class DoclingPipeline:
             tokenizer=self.tokenizer,
             merge_peers=True
         )
+        self.table_chunker = HybridChunker(
+            tokenizer=self.tokenizer,
+            serializer_provider=MDTableSerializerProvider(),
+        )
+        
         self.embedder = SentenceTransformer(embed_model)
 
         self.db_vetorial.ensure_collections()
@@ -56,10 +79,14 @@ class DoclingPipeline:
         """Configura o DocumentConverter para PDFs com opções otimizadas."""
 
         pipeline_options = PdfPipelineOptions()
-        pipeline_options.do_ocr = False
+        pipeline_options.do_ocr = True
         pipeline_options.do_table_structure = True
         pipeline_options.generate_picture_images = True
         pipeline_options.images_scale = 0.7
+        pipeline_options.ocr_options.lang = ["en", "pt"]
+
+        ocr_options = EasyOcrOptions(force_full_page_ocr=True, lang=["en", "pt"])
+        pipeline_options.ocr_options = ocr_options
 
         device_type = AcceleratorDevice.CUDA if torch.cuda.is_available() else AcceleratorDevice.CPU
         pipeline_options.accelerator_options = AcceleratorOptions(
@@ -97,12 +124,12 @@ class DoclingPipeline:
         # ============================================================ #
         # Buscar e converter inicialmente o documento
         # ============================================================ #
-        metadata = self.db_metadata.buscar_pendente()
+        metadata = self.db_metadata.buscar_pendente(randomize=True)
         if not metadata:
             print("[Docling] Nenhum documento pendente para processar.")
             return False
         
-        print(f"[Docling] Processando documento {metadata['titulo']}...")
+        print(f"[Docling] Documento pendente encontrado: {metadata['link_pdf']}. Iniciando processamento...")
         self.db_metadata.atualizar_status(metadata["id"], "em processamento")
 
         link_pagina = metadata.get("link_pdf")
@@ -140,16 +167,20 @@ class DoclingPipeline:
         print(f"[Docling] Documento {metadata['id']} convertido com sucesso.")
         print("Iniciando pipeline completa de processamento...")
 
+        # materializar chunks uma única vez (chunker.chunk() retorna um gerador)
         chunk_iter = self.chunker.chunk(docling_doc)
+        chunks = list(chunk_iter)
+        table_chunk_iter = self.table_chunker.chunk(docling_doc)
+        table_chunks = list(table_chunk_iter)
 
         # Inserir os metadados na coleção de recomendação
         self._processar_recomendacao(metadata)
 
         # Inserir os chunks na coleção de chunks
-        self._processar_chunks(metadata, chunk_iter)
+        self._processar_chunks(metadata, chunks)
 
         # Inserir as tabelas na coleção de tabelas
-        self._processar_tabelas(metadata, chunk_iter)
+        self._processar_tabelas(metadata, table_chunks)
 
         print(f"[Docling] Documento {metadata['id']} processado com sucesso.\n")
         print("Contagem de pontos no banco vetorial:")
@@ -173,6 +204,7 @@ class DoclingPipeline:
         resumo = metadata.get("resumo", "")
         keywords = metadata.get("palavras_chave", "")
         handle = metadata.get("link_pdf", "")
+        conteudo = metadata.get("tipo_conteudo", "")
 
         payload = {
             "pid": pid,
@@ -182,19 +214,18 @@ class DoclingPipeline:
             "handle": handle,
         }
 
-        embed_text = f"{titulo}\n\n{resumo}\n\n{keywords}"
+        embed_text = f"{titulo}\n\n{resumo}\n\n{keywords}\n\n{conteudo}"
         embedding = self.embedder.encode(embed_text).tolist()
 
         self.db_vetorial.upsert_recommendation(payload, embedding)
 
-    def _processar_chunks(self, metadata: dict, docling_iter) -> None:
+    def _processar_chunks(self, metadata: dict, chunks: list) -> None:
         """
         Processa e insere os chunks do documento na coleção de chunks.
         Args:
             metadata (dict): Metadados do documento.
-            docling_iter (Iterable): Iterador de chunks do documento.
+            chunks (list): Lista de chunks do documento.
         """
-        chunks: List[DocChunk] = list(docling_iter)
 
         doc_id = metadata.get("id", "")
         handle = metadata.get("link_pdf", "")
@@ -204,16 +235,11 @@ class DoclingPipeline:
 
             doc_items = getattr(getattr(chunk, "meta", None), "doc_items", []) or []
             labels = [getattr(it, "label", None) for it in doc_items]
-            for label in labels:
-                # Se encontrar uma tabela, pular este chunk (será processado na coleção de tabelas)
-                if label == DocItemLabel.TABLE:
-                    print("[Docling] Chunk com tabela detectado, pulando para coleção de tabelas.")
-                    continue
+            if any(label == DocItemLabel.TABLE for label in labels):
+                continue  # pular tabelas (serão processadas separadamente)
 
             context_chunk = self.chunker.contextualize(chunk=chunk)
             pid = uuid.uuid4().hex  # Gerar um ID único para o chunk
-
-            # Processo de embedding do contexto_chunk
             embedding = self.embedder.encode(context_chunk).tolist()
 
             # Preparar payload para inserção
@@ -231,14 +257,13 @@ class DoclingPipeline:
         if processed == 0:
             print("[Docling] Nenhum chunk processado no documento.\n")
 
-    def _processar_tabelas(self, metadata: dict, docling_iter) -> None:
+    def _processar_tabelas(self, metadata: dict, chunks: list) -> None:
         """
         Processa e insere as tabelas do documento na coleção de tabelas.
         Args:
             metadata (dict): Metadados do documento.
-            docling_iter (Iterable): Iterador de chunks do documento.
+            chunks (list): Lista de chunks do documento.
         """
-        chunks: List[DocChunk] = list(docling_iter)
 
         doc_id = metadata.get("id", "")
         handle = metadata.get("link_pdf", "")
@@ -249,18 +274,13 @@ class DoclingPipeline:
             has_table = False
             doc_items = getattr(getattr(chunk, "meta", None), "doc_items", []) or []
             labels = [getattr(it, "label", None) for it in doc_items]
-            for label in labels:
-                # Procura apenas por chunks que contenham tabelas
-                if label == DocItemLabel.TABLE:
-                    print("[Docling] Chunk com tabela detectado, pulando para coleção de tabelas.")
-                    has_table = True
+            if any(label == DocItemLabel.TABLE for label in labels):
+                has_table = True
             if not has_table:
-                continue
+                continue # pular chunks sem tabela
 
             context_chunk = self.chunker.contextualize(chunk=chunk)
             pid = uuid.uuid4().hex  # ID único para a tabela
-
-            # placeholder para embedding (use seu gerador real de embeddings aqui)
             embedding = self.embedder.encode(context_chunk).tolist()
 
             payload = {

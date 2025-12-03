@@ -101,6 +101,15 @@ class QdrantVectorDB:
         stats = self.client.count(collection_name=name)
         return int(stats.count) if stats else 0
     
+    def show_points(self, name: str, limit: int = 5) -> None:
+        points, _ = self.client.scroll(
+            collection_name=name,
+            limit=limit,
+        )
+        results = []
+        for hit in points:
+            print(f"ID: {hit.id}, Payload: {hit.payload}, Vector: {hit.vector}\n\n")
+
     # ============================================================ #
     # Funções internas de upsert
     # ============================================================ #
@@ -159,7 +168,6 @@ class QdrantVectorDB:
             "keywords": _ensure_list(doc_meta.get("palavras_chave")),
             "resumo": doc_meta.get("resumo", ""),
             "handle": doc_meta.get("handle", ""),
-            "pagina": doc_meta.get("pagina", -1),
         }
 
         self._upsert_point("recomendacoes", pid, payload, embedding)

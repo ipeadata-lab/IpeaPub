@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from src.ingestor.utils import clean_item
 from src.db.banco_metadados import MetadataDB
 
-BASE = "https://repositorio.ipea.gov.br/server/api/discover/browses/dateissued/items"
+BASE = "https://repositorio.ipea.gov.br/server/api/discover/browses/dateissued/items?sort=dateissued,DESC"
 
 class Scraper:
     """
@@ -21,7 +21,9 @@ class Scraper:
 
     def _buscar_pagina(self, page_number: int) -> List[Dict[str, Any]]:
         """Busca os itens brutos da API para a página fornecida."""
-        url = f"{self.base_api}?page={page_number}"
+        sep = "&" if "?" in self.base_api else "?"
+        url = f"{self.base_api}{sep}page={page_number}"
+
         r = requests.get(url, timeout=15)
         r.raise_for_status()
         data = r.json()

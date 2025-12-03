@@ -8,14 +8,13 @@ TOTAL_PAGES = 860
 if __name__ == "__main__":
 
     # scraper = Scraper()
-    # for i in range(0, 1):
+    # for i in range(1, 20):
     #     scraper.processar_pagina(i)
-    #     print(f"Página {i} processada.")
+    
+    # time.sleep(5)
 
-    # time.sleep(10)
-
-    # if os.name == "nt":
-    #     os.system('cls')
+    if os.name == "nt":
+        os.system('cls')
 
     pipeline = DoclingPipeline()
     while True:

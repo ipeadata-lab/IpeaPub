@@ -103,13 +103,21 @@ class MetadataDB:
             ))
             conn.commit()
 
-    def buscar_pendente(self) -> Optional[Dict[str, Any]]:
-        """Busca um documento com status_ingestao = 'pendente' (um único)."""
+    def buscar_pendente(self, randomize: bool = False) -> Optional[Dict[str, Any]]:
+        """
+        Busca e reserva um documento pendente
+
+        Args:
+            randomize (bool): Se True, seleciona um documento aleatório.
+        """
         with self.conectar() as conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT * FROM documentos WHERE status_ingestao = 'pendente' LIMIT 1")
+            query = ("SELECT * FROM documentos WHERE status_ingestao = 'pendente' "
+                     + ("ORDER BY RANDOM() LIMIT 1" if randomize else "LIMIT 1"))
+
+            cursor.execute(query)
             row = cursor.fetchone()
-        return dict(row) if row else None
+            return dict(row) if row else None
 
     def atualizar_status(self, id: str, status: str) -> None:
         """Atualiza apenas o status_ingestao do documento."""
