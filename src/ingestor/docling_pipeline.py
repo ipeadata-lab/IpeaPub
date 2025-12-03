@@ -1,5 +1,6 @@
 import os
 import uuid
+import time
 import torch
 import tempfile
 from transformers import AutoTokenizer
@@ -30,6 +31,16 @@ from docling_core.transforms.chunker.hierarchical_chunker import (
 from src.db.banco_metadados import MetadataDB
 from src.ingestor.utils import baixar_pdf_real
 from src.db.banco_vetorial import QdrantVectorDB
+
+def timer(func):
+    def wrapper(*args, **kwargs):
+        start_time = time.time()
+        result = func(*args, **kwargs)
+        end_time = time.time()
+        elapsed_time = end_time - start_time
+        print(f"Função '{func.__name__}' executada em {elapsed_time:.2f} segundos.")
+        return result
+    return wrapper
 
 class MDTableSerializerProvider(ChunkingSerializerProvider):
     def get_serializer(self, doc: DoclingDocument) -> BaseDocSerializer:
@@ -113,6 +124,7 @@ class DoclingPipeline:
 
         return page_no
 
+    @timer
     def processar_documento(self) -> bool:
         """
         Pipeline completa de processamento de documento
