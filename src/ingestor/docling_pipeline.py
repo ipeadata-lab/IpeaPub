@@ -4,6 +4,7 @@ import torch
 import tempfile
 from transformers import AutoTokenizer
 from typing import Iterable, List, Optional, Tuple
+from sentence_transformers import SentenceTransformer
 
 from docling.datamodel.base_models import InputFormat
 from docling.datamodel.pipeline_options import PdfPipelineOptions
@@ -47,6 +48,7 @@ class DoclingPipeline:
             tokenizer=self.tokenizer,
             merge_peers=True
         )
+        self.embedder = SentenceTransformer(embed_model)
 
         self.db_vetorial.ensure_collections()
 
@@ -100,8 +102,9 @@ class DoclingPipeline:
             print("[Docling] Nenhum documento pendente para processar.")
             return False
         
-        print(f"[Docling] Processando documento {metadata['id']}...")
-        
+        print(f"[Docling] Processando documento {metadata['titulo']}...")
+        self.db_metadata.atualizar_status(metadata["id"], "em processamento")
+
         link_pagina = metadata.get("link_pdf")
         if not link_pagina:
             print(f"[Docling] Documento {metadata['id']} sem link_pdf.")
@@ -180,7 +183,7 @@ class DoclingPipeline:
         }
 
         embed_text = f"{titulo}\n\n{resumo}\n\n{keywords}"
-        embedding = [0.0] * self.db_vetorial.vector_size  # placeholder para embedding real
+        embedding = self.embedder.encode(embed_text).tolist()
 
         self.db_vetorial.upsert_recommendation(payload, embedding)
 
@@ -198,20 +201,20 @@ class DoclingPipeline:
 
         processed = 0
         for _, chunk in enumerate(chunks):
-            # verificar se o chunk não é uma tabela antes de continuar
-            has_table = False
-            for it in getattr(getattr(chunk, "meta", None), "doc_items", []) or []:
-                if it.label == DocItemLabel.TABLE:
-                    has_table = True
-                    break
-            if has_table:
-                continue
+
+            doc_items = getattr(getattr(chunk, "meta", None), "doc_items", []) or []
+            labels = [getattr(it, "label", None) for it in doc_items]
+            for label in labels:
+                # Se encontrar uma tabela, pular este chunk (será processado na coleção de tabelas)
+                if label == DocItemLabel.TABLE:
+                    print("[Docling] Chunk com tabela detectado, pulando para coleção de tabelas.")
+                    continue
 
             context_chunk = self.chunker.contextualize(chunk=chunk)
             pid = uuid.uuid4().hex  # Gerar um ID único para o chunk
 
             # Processo de embedding do contexto_chunk
-            embedding = [0.0] * self.db_vetorial.vector_size  # placeholder para embedding real
+            embedding = self.embedder.encode(context_chunk).tolist()
 
             # Preparar payload para inserção
             payload = {
@@ -242,12 +245,15 @@ class DoclingPipeline:
 
         processed = 0
         for _, chunk in enumerate(chunks):
-            # verificar se o chunk contém algum DocItem com label TABLE
+
             has_table = False
-            for it in getattr(getattr(chunk, "meta", None), "doc_items", []) or []:
-                if it.label == DocItemLabel.TABLE:
+            doc_items = getattr(getattr(chunk, "meta", None), "doc_items", []) or []
+            labels = [getattr(it, "label", None) for it in doc_items]
+            for label in labels:
+                # Procura apenas por chunks que contenham tabelas
+                if label == DocItemLabel.TABLE:
+                    print("[Docling] Chunk com tabela detectado, pulando para coleção de tabelas.")
                     has_table = True
-                    break
             if not has_table:
                 continue
 
@@ -255,7 +261,7 @@ class DoclingPipeline:
             pid = uuid.uuid4().hex  # ID único para a tabela
 
             # placeholder para embedding (use seu gerador real de embeddings aqui)
-            embedding = [0.0] * self.db_vetorial.vector_size
+            embedding = self.embedder.encode(context_chunk).tolist()
 
             payload = {
                 "pid": pid,
