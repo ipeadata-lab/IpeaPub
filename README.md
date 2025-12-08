@@ -1,177 +1,94 @@
-# Sistema multiagente IpeaPub
+Documentação: projeto RagPub
 
-TODO: adicionar descrição do sistema multiagente IpeaPub, seus objetivos e funcionalidades principais.
+# **1\. Contexto**  
+O projeto RagPub visa o desenvolvimento de um sistema de agentes assistentes inteligentes para o repositório de conhecimento do Ipea. A proposta central é criar uma solução robusta, baseada em IA, capaz de processar e interpretar todos os documentos do repositório, permitindo aos usuários interagir com o conteúdo por meio de um agente conversacional. Os principais recursos incluem:
 
----
+* Recomendação personalizada de leituras;  
+* Respostas a perguntas com base no contexto específico dos documentos (RAG);  
+* Interação conversacional com fontes de dados (gráficos, imagens e tabelas) presentes nos documentos.
 
-# ✅ **1. BANCOS DO SISTEMA (REESTRUTURADOS)**
+Para atingir esses objetivos, o projeto utilizará uma arquitetura de sistema multi-agentes, bibliotecas Python especializadas e técnicas avançadas de Recuperação Aumentada por Geração (RAG). O detalhamento do funcionamento interno será apresentado nas próximas seções.
 
----
+# **2\. Tecnologias**  
+	O projeto está sendo desenvolvido em Python, com código fonte disponível em [IpeaPub](https://github.com/ipeadata-lab/IpeaPub) no GitHub do Ipea. Os principais frameworks e bibliotecas utilizadas no projeto são:
 
-# **📌 Banco 1 — SQL (Relacional — Metadados Mestrais)**
+* Docling (para parsing de documentos)  
+* Qdrant (para banco vetorial)  
+* PyTorch/transformers (para rodar modelos de IA localmente)  
+* BeautifulSoup (para o crawler do site do Ipea)  
+* Agno (framework de agentes de IA)  
+* FastAPI (para receber e responder requisições)  
+* Docker (Conteinerização do projeto)
 
-**Função:**
-Manter metadados estruturados, garantir integridade e centralizar identificação de documentos.
+# **3\. Funcionamento**  
+	Existem 2 etapas para o funcionamento integral do sistema: ingestão e recuperação. Abaixo, será explicado cada uma delas. Os arquivos Python envolvidos em cada sub etapa do projeto estará explicitado entre parênteses para ajudar o entendimento.
 
-**Campos principais (tabela `documentos`):**
+## **3.1. Ingestão**  
+	Essa etapa serve para inserir as informações dos documentos do repositório na base de dados do projeto. As informações são a base para o funcionamento do sistema multiagente, por isso pode ser considerada a etapa mais importante do projeto. São utilizados bancos de dados vetoriais para realizar a busca semântica de informações. O banco vetorial possui 4 coleções (*banco\_vetorial.py*):
 
-| Campo             | Função                                         |
-| ----------------- | ---------------------------------------------- |
-| `id` (UUID)       | Identificador global, usado em todos os bancos |
-| `titulo`          | Título do documento                            |
-| `autores`         | Autores                                        |
-| `ano`             | Ano de publicação                              |
-| `tipo_conteudo`   | livro, relatório, nota técnica…                |
-| `resumo`          | Resumo oficial                                 |
-| `palavras_chave`  | Palavras-chave                                 |
-| `link_pdf`        | URL para download                              |
-| `hash_pdf`        | Hash usado para detectar atualizações          |
-| `status_ingestao` | pendente / processando / completo              |
-| `data_ingestao`   | timestamp                                      |
-A divisão agora está **perfeita, limpa, modular e extremamente prática**. Vou reescrever e refinar cada coleção para garantir consistência, evitar redundâncias e deixar tudo pronto para implementação.
+- **recomendações:** Embedding titulo+resumo+keywords+tipo\_conteudo para que o sistema de agentes possa buscar documentos de acordo com o contexto do usuário.  
+- **chunks:** Embedding clássico de chunks de texto dos documentos para RAG. Utiliza contextualização disponibilizada pela engine do Docling  
+- **tabelas:** Embedding de tabelas markdown/descrição de tabelas para poder buscar fontes de dados reais.  
+- **imagens/gráficos:** Embedding de descrição+legenda de imagens para poder buscar fontes de dados reais.
 
-O formato abaixo já é adequado para Qdrant/Chroma/LanceDB.
+Essas coleções são preenchidas de acordo com o diagrama abaixo, explicado adiante:
 
----
+![][image1]
 
-# ✅ **Banco 1 (Relacional – metadados gerais)**
+1. (*scraper.py* e *banco\_metadados.py*) Todos os metadados de todos os documentos são adicionados em um banco de dados relacional âncora, com um estado de processamento pendente.  
+2. (*docling\_pipeline.py* e *banco\_vetorial.py)* A pipeline busca por documentos pendentes no banco relacional e processa as informações dele para inserir nas coleções de pontos vetoriais: chunks, tabelas, imagens e recomendação, utilizando o Docling como ferramenta principal.
 
+O arquivo *utils.py* possui funções auxiliares, como o crawler do site para buscar os arquivos PDFs a serem processados. Na pipeline do Docling, encontra-se também acesso a modelos de LLM e visão computacional para resumir e legendar tabelas e imagens, para que possam ser buscadas na query semântica do banco vetorial. Os arquivos de processamento se encontram na pasta *ingestor*, relacionado justamente com a etapa de ingestão.
 
-**Função:** armazenar metadados estruturados e garantir integridade para busca e referência.
+## **3.2 Recuperação**  
+A etapa de recuperação e geração do sistema é estruturada em uma pipeline composta por nove agentes especializados. Cada agente desempenha uma função específica dentro do fluxo de processamento, garantindo precisão, interpretabilidade e controle sobre o comportamento do sistema. A seguir, descreve-se cada um dos componentes da arquitetura.
 
-**Tabela principal: `documentos`**
-| Campo             | Tipo     | Descrição                                         |
-| ----------------- | -------- | ------------------------------------------------- |
-| `id`              | UUID     | Identificador global, usado em todos os bancos    |
-| `titulo`          | Texto    | Título do documento                               |
-| `autores`         | Texto    | Autores                                           |
-| `ano`             | Inteiro  | Ano de publicação                                 |
-| `tipo_conteudo`   | Texto    | livro, relatório, nota técnica…                   |
-| `resumo`          | Texto    | Resumo oficial                                    |
-| `palavras_chave`  | Texto    | Palavras-chave                                    |
-| `link_pdf`        | Texto    | URL para download                                 |
-| `link_uri`        | Texto    | URL da página do documento                        |
-| `hash_pdf`        | Texto    | Hash usado para detectar atualizações             |
-| `status_ingestao` | Texto    | pendente / processando / completo                 |
-| `data_ingestao`   | Texto    | timestamp                                         |
+1. **Agente de Classificação de Intenção**
 
----
+Identifica o propósito da consulta e classifica a intenção do usuário (resposta textual simples, RAG textual, busca por tabelas, busca por imagens/gráficos ou recomendação de leitura). Retorna um objeto estruturado com o tipo de resposta esperado, nível de detalhamento e eventuais requisitos, guiando toda a pipeline.
 
-# 🧠 **Banco 2 (Vetorial) – com 4 coleções independentes**
+2. **Agente de Extração de Contexto**
 
-A separação por tipo de dado é **a melhor escolha possível**, tanto para performance quanto para manutenção.
+Extrai o núcleo semântico da pergunta a partir da query e da intenção. Gera termos-chave, filtros temáticos ou temporais e restrições por tipo de documento. Esse contexto orienta a geração de múltiplas queries especializadas para cada coleção vetorial.
 
----
+3. **Primeira Camada de Recuperação**
 
-## **📚 Coleção 1 — Recomendação de documentos (semântica "global")**
+Executa a primeira busca nas coleções vetoriais (recomendações, chunks textuais, tabelas e imagens/gráficos). Cada coleção recebe uma query adaptada ao seu tipo de conteúdo. O resultado inicial serve de base para o refinamento da consulta.
 
-Objetivo: recomendar *documentos* inteiros, não trechos.
+4. **Agente de Refinamento de Query**
 
-### **Campos sugeridos**
+Ajusta e aprimora as queries, sempre sem alterar a intenção original. Expande termos, desambigua conceitos e aplica filtros para melhorar o recall. Para cada coleção vetorial, gera uma versão especializada da query, adequada às características de cada embedding.
 
-```json
-{
-  "doc_id": "uuid",
-  "titulo": "...",
-  "keywords": "...",
-  "resumo": "...",
-  "embedding": "vector"
-}
-```
+5. **Segunda Camada de Recuperação**
 
-### **Observações**
+Realiza uma nova rodada de busca usando as queries refinadas. Essa etapa corrige ruídos da primeira recuperação e retorna top-k documentos por coleção, agora com maior precisão e relevância.
 
-* *Não precisa guardar texto longo ou chunk.*
-* O embedding deve ser **do resumo + título + palavras-chave**, concatenados.
-* Usada quando o usuário pede:
-  *"Quais documentos são mais relacionados a X?"*
-  ou
-  *"Recomende leituras complementares."*
+6. **Agente de Fusão de Contexto**
 
----
+Unifica todas as evidências recuperadas. Deduplica trechos, consolida informações semelhantes, resolve inconsistências entre documentos e produz um contexto coerente e organizado. O resultado é um bloco de evidências limpo, pronto para geração da resposta.
 
-## **📄 Coleção 2 — RAG textual (chunk-level com contexto de seção)**
+7. **Agente de Interpretação de Dados**
 
-Objetivo: recuperar *conteúdo textual específico*, contextualizado dentro da estrutura do documento.
+Ativado quando o usuário solicita tabelas, indicadores ou gráficos. Extrai valores, normaliza dados, identifica séries temporais e prepara estruturas numéricas diretamente derivadas das fontes recuperadas.
 
-### **Campos**
+8. **Agente Gerador de Resposta Final**
 
-```json
-{
-  "doc_id": "uuid",
-  "pagina": 12,
-  "section_header": "Resultados e Discussão",
-  "chunk_text": "...",
-  "embedding": "vector"
-}
-```
+Produz a resposta final com base na intenção original, no contexto fundido e nos dados estruturados. Garante que o formato e o nível de detalhamento coincidam com o que o usuário solicitou.
 
-### **Observações**
+9. **Agente Verificador de Fatos**
 
-* Melhor incluir o header da seção se o docling fornecer.
-* O `pagina` é extremamente útil para depurar respostas e reconstruir o contexto original.
-* Essa coleção alimenta:
+Valida a resposta final, verificando se todas as informações estão presentes nas evidências recuperadas e se não há contradições ou alucinações. Caso detecte divergências, devolve o conteúdo para correção pelo gerador de resposta.
 
-  * chat RAG
-  * QA semântico
-  * sumarizações segmentadas
+O fluxo geral da pipeline então fica da seguinte forma:
 
----
+1. A consulta do usuário é analisada pelo Agente de Intenção  
+2. O Agente de Contexto define palavras-chave e filtros.  
+3. O sistema realiza a primeira recuperação de evidências.  
+4. O Agente de Refinamento ajusta a query.  
+5. Uma segunda recuperação busca evidências mais precisas.  
+6. O Agente de Fusão consolida todas as informações.  
+7. O Agente de Dados interpreta tabelas e gráficos (quando aplicável).  
+8. O Gerador produz a resposta final.  
+9. O Verificador garante aderência total às fontes.
 
-## **🖼️ Coleção 3 — Imagens e Gráficos (multimodal RAG)**
-
-Objetivo: recuperar informação visual — gráficos, diagramas, figuras — por texto ou imagem.
-
-### **Campos**
-
-```json
-{
-  "doc_id": "uuid",
-  "pagina": 7,
-  "caption": "Figura 3: Relação entre ...",
-  "descricao_llm": "Descrição semântica detalhada da imagem",
-  "bytes_imagem": "<binary data>",
-  "embedding": "vector"
-}
-```
-
-### **Notas importantes**
-
-* `descricao_llm` melhora muito a busca semântica baseada em pergunta textual.
-* Para o embedding, escolha:
-
-  * CLIP / SigLIP (melhor para imagens), **ou**
-  * embedding de `caption + descricao_llm` (melhor para RAG textual)
-* Pode manter **ambos embeddings**, se quiser separar em dois vetores, mas não é obrigatório no começo.
-
----
-
-## **📊 Coleção 4 — Tabelas (RAG especializado)**
-
-Objetivo: permitir buscas envolvendo dados tabulares.
-
-### **Campos**
-
-```json
-{
-  "doc_id": "uuid",
-  "pagina": 5,
-  "caption": "Tabela 2: Estatísticas descritivas",
-  "descricao_llm": "Resumo descritivo da tabela",
-  "table_markdown": "Tabela convertida para Markdown ou CSV-like",
-  "embedding": "vector"
-}
-```
-
-### **Notas**
-
-* `table_markdown` é extremamente útil:
-
-  * é leve
-  * fácil de usar em prompts
-  * fácil de converter de volta para tabela
-* Se a tabela for grande demais:
-
-  * gere um **chunk textual da tabela** e use isso para embedding.
-
----
+[image1]: <data:image/png;base64,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>
