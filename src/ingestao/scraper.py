@@ -1,7 +1,7 @@
 import requests
 from typing import Any, Dict, List
 from datetime import datetime, timezone
-from src.ingestor.utils import clean_item
+from src.ingestao.utils import clean_item
 from src.db.banco_metadados import MetadataDB
 
 BASE = "https://repositorio.ipea.gov.br/server/api/discover/browses/dateissued/items?sort=dateissued,DESC"

@@ -1,5 +1,5 @@
-from src.ingestor.docling_pipeline import DoclingPipeline
-from src.ingestor.scraper import Scraper
+from src.ingestao.docling_pipeline import DoclingPipeline
+from src.ingestao.scraper import Scraper
 
 import time
 import os

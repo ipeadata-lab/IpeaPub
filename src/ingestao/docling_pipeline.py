@@ -29,7 +29,7 @@ from docling_core.transforms.chunker.hierarchical_chunker import (
 )
 
 from src.db.banco_metadados import MetadataDB
-from src.ingestor.utils import baixar_pdf_real
+from src.ingestao.utils import baixar_pdf_real
 from src.db.banco_vetorial import QdrantVectorDB
 
 def timer(func):
