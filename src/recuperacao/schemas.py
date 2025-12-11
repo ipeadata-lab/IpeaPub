@@ -164,6 +164,30 @@ class FusedContext(BaseModel):
     )
 
 
+class Source(BaseModel):
+    """Fonte utilizada na resposta final.
+
+    Construída a partir dos metadados reais das coleções vetoriais,
+    sem intervenção do LLM, para evitar alucinações de links.
+    """
+    titulo: str = Field(description="Título do documento")
+
+    handle: Optional[str] = Field(
+        default=None,
+        description="Link/handle original para o documento"
+    )
+
+    tipos: List[Literal["chunk", "table", "image", "recommendation"]] = Field(
+        default_factory=list,
+        description="Tipos de evidência em que o documento apareceu"
+    )
+
+    paginas: List[int] = Field(
+        default_factory=list,
+        description="Páginas do documento associadas às evidências"
+    )
+
+
 class ExtractedValue(BaseModel):
     """Item estruturado extraído de tabelas/dados."""
     
@@ -235,9 +259,9 @@ class FinalResponse(BaseModel):
         description="Texto da resposta"
     )
     
-    sources: List[Dict[str, str]] = Field(
+    sources: List[Source] = Field(
         default_factory=list,
-        description="Lista de fontes citadas"
+        description="Lista de fontes utilizadas, construída pela pipeline"
     )
     
     confidence: Literal["alta", "media", "baixa"] = Field(

@@ -5,7 +5,7 @@ Utiliza o framework Agno com OpenAI como LLM.
 
 import os
 import json
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, cast, Literal
 from dotenv import load_dotenv
 from time import perf_counter
 from datetime import datetime
@@ -240,7 +240,7 @@ class RAGPipeline:
     Pipeline completa de RAG com 9 etapas de agentes especializados.
     """
     
-    def __init__(self, model_id: str = "gpt-4o-mini", verbose: bool = True) -> None:
+    def __init__(self, model_id: str = "gpt-4o-mini", verbose: bool = False) -> None:
         """
         Inicializa a pipeline com o modelo especificado.
         
@@ -266,6 +266,108 @@ class RAGPipeline:
         
         # Estado da pipeline
         self.state: Dict[str, Any] = {}
+
+    # ============================================================ #
+    # Funções auxiliares internas
+    # ============================================================ #
+
+    def _build_sources(self, evidence: Dict[str, Any]) -> List[Source]:
+        """Constrói lista de fontes a partir das evidências recuperadas.
+
+        Usa exclusivamente metadados reais do banco vetorial (doc_id, título,
+        handle, páginas), evitando qualquer alucinação de links pelo LLM.
+        """
+
+        sources_by_doc: Dict[str, Source] = {}
+
+        # 1) Recomendações: melhor lugar para pegar título e handle
+        for rec in evidence.get("recommendations", []) or []:
+            doc_id = rec.get("doc_id")
+            if not doc_id:
+                continue
+            src = sources_by_doc.get(doc_id)
+            if not src:
+                src = Source(
+                    titulo=rec.get("titulo") or f"Documento {doc_id}",
+                    handle=rec.get("handle") or None,
+                    tipos=["recommendation"],
+                    paginas=[],
+                )
+                sources_by_doc[doc_id] = src
+            else:
+                if "recommendation" not in src.tipos:
+                    src.tipos.append("recommendation")
+                if rec.get("handle") and not src.handle:
+                    src.handle = rec.get("handle")
+
+        # 2) Chunks de texto
+        for chunk in evidence.get("chunks", []) or []:
+            doc_id = chunk.get("doc_id")
+            if not doc_id:
+                continue
+            pagina = chunk.get("pagina")
+            src = sources_by_doc.get(doc_id)
+            if not src:
+                src = Source(
+                    titulo=f"Documento {doc_id}",
+                    handle=chunk.get("handle") or None,
+                    tipos=["chunk"],
+                    paginas=[pagina] if isinstance(pagina, int) and pagina >= 0 else [],
+                )
+                sources_by_doc[doc_id] = src
+            else:
+                if "chunk" not in src.tipos:
+                    src.tipos.append("chunk")
+                if chunk.get("handle") and not src.handle:
+                    src.handle = chunk.get("handle")
+                if isinstance(pagina, int) and pagina >= 0 and pagina not in src.paginas:
+                    src.paginas.append(pagina)
+
+        # 3) Tabelas
+        for table in evidence.get("tables", []) or []:
+            doc_id = table.get("doc_id")
+            if not doc_id:
+                continue
+            pagina = table.get("pagina")
+            src = sources_by_doc.get(doc_id)
+            if not src:
+                src = Source(
+                    titulo=f"Documento {doc_id}",
+                    handle=table.get("handle") or None,
+                    tipos=["table"],
+                    paginas=[pagina] if isinstance(pagina, int) and pagina >= 0 else [],
+                )
+                sources_by_doc[doc_id] = src
+            else:
+                if "table" not in src.tipos:
+                    src.tipos.append("table")
+                if table.get("handle") and not src.handle:
+                    src.handle = table.get("handle")
+                if isinstance(pagina, int) and pagina >= 0 and pagina not in src.paginas:
+                    src.paginas.append(pagina)
+
+        # 4) Imagens
+        for img in evidence.get("images", []) or []:
+            doc_id = img.get("doc_id")
+            if not doc_id:
+                continue
+            pagina = img.get("pagina")
+            src = sources_by_doc.get(doc_id)
+            if not src:
+                src = Source(
+                    titulo=f"Documento {doc_id}",
+                    handle=None,
+                    tipos=["image"],
+                    paginas=[pagina] if isinstance(pagina, int) and pagina >= 0 else [],
+                )
+                sources_by_doc[doc_id] = src
+            else:
+                if "image" not in src.tipos:
+                    src.tipos.append("image")
+                if isinstance(pagina, int) and pagina >= 0 and pagina not in src.paginas:
+                    src.paginas.append(pagina)
+
+        return list(sources_by_doc.values())
     
     def _log(self, step: str, message: str):
         """Log de progresso da pipeline."""
@@ -366,15 +468,13 @@ class RAGPipeline:
             context.query_for_chunks, top_k=10
         )
         
-        # Buscar em tabelas se necessário
+        # Buscar em tabelas APENAS se o usuário explicitou necessidade de dados
         if intent and intent.requires_data:
             results["tabelas"] = search_tables(
                 context.query_for_tables, top_k=5
             )
         else:
-            results["tabelas"] = search_tables(
-                context.query_for_tables, top_k=3
-            )
+            results["tabelas"] = []
         
         # Buscar imagens se necessário
         if intent and intent.requires_images:
@@ -462,11 +562,14 @@ class RAGPipeline:
         results["chunks"] = search_chunks(
             refined.query_chunks, top_k=10
         )
-        results["tabelas"] = search_tables(
-            refined.query_tables, top_k=5
-        )
-        
+
         intent = self.state.get("intent")
+        if intent and intent.requires_data:
+            results["tabelas"] = search_tables(
+                refined.query_tables, top_k=5
+            )
+        else:
+            results["tabelas"] = []
         if intent and intent.requires_images:
             results["imagens"] = search_images(
                 refined.query_images, top_k=5
@@ -556,7 +659,8 @@ class RAGPipeline:
         self.state["all_evidence"] = {
             "chunks": list(all_chunks.values()),
             "tables": list(all_tables.values()),
-            "recommendations": second_results.get("recomendacoes", [])
+            "recommendations": second_results.get("recomendacoes", []),
+            "images": second_results.get("imagens", []),
         }
         self._log("Passo 6", f"Duração: {int((perf_counter()-start)*1000)} ms")
         return fused_context
@@ -640,30 +744,32 @@ class RAGPipeline:
             Métricas principais: {', '.join(data_interpretation.key_metrics)}
             """
         
-        prompt += """
-        
-        Gere uma resposta completa e bem fundamentada.
+            prompt += """
 
-        IMPORTANTE:
-        - Responda **APENAS** com um JSON válido, sem texto extra.
-        - O JSON deve ter exatamente estas chaves:
-          {
-            "response_text": "texto da resposta em markdown",
-            "sources": [
-              {
-                "titulo": "Título do documento",
-                "handle": "URL ou identificador do documento"
-              }
-            ],
-            "confidence": "alta" | "media" | "baixa",
-            "data_included": true | false
-          }
-        """
+                Gere uma resposta completa e bem fundamentada.
+
+                IMPORTANTE:
+                - Responda **APENAS** com um JSON válido, sem texto extra.
+                - O JSON deve ter exatamente estas chaves:
+                    {
+                        "response_text": "texto da resposta em markdown",
+                        "confidence": "alta" | "media" | "baixa",
+                        "data_included": true | false
+                    }
+                - NÃO inclua links nem lista de fontes; isso será adicionado
+                    automaticamente pelo sistema com base nas evidências reais.
+                """
         
         response = self.response_agent.run(prompt)
         raw = self._get_content(response)
-        # Tentar converter o retorno em FinalResponse
-        final_response: FinalResponse
+
+        # Tentar converter o retorno em JSON simples
+        response_text: str
+        confidence_value: str = "media"
+        data_included_flag: bool = bool(
+            data_interpretation and data_interpretation.has_data
+        )
+
         try:
             if isinstance(raw, str):
                 data = json.loads(raw)
@@ -672,19 +778,32 @@ class RAGPipeline:
             else:
                 data = json.loads(str(raw))
 
-            final_response = FinalResponse(**data)
+            response_text = str(data.get("response_text") or "").strip()
+            confidence_value = str(data.get("confidence") or "media")
+            if confidence_value not in {"alta", "media", "baixa"}:
+                confidence_value = "media"
+            if "data_included" in data:
+                data_included_flag = bool(data.get("data_included"))
         except Exception as e:
             # Fallback se o modelo não respeitar o formato
             self._log("Passo 8", f"Aviso: falha ao parsear JSON ({e}). Aplicando padrão.")
+            # Mostrar a diferença do json
+            self._log("Passo 8", f"Resposta bruta: {raw}")
             response_text = str(raw) if raw else "Não foi possível gerar resposta."
-            final_response = FinalResponse(
-                response_text=response_text,
-                sources=[],
-                confidence="media",
-                data_included=bool(
-                    data_interpretation and data_interpretation.has_data
-                )
-            )
+
+        if not response_text:
+            response_text = "Não foi possível gerar resposta."
+
+        # Construir fontes a partir das evidências reais (sem LLM)
+        evidence = self.state.get("all_evidence", {})
+        sources = self._build_sources(evidence)
+
+        final_response = FinalResponse(
+            response_text=response_text,
+            sources=sources,
+            confidence=cast(Literal['alta', 'media', 'baixa'], confidence_value),
+            data_included=data_included_flag,
+        )
         
         self._log("Passo 8", f"Resposta gerada (confiança: {final_response.confidence})")
         if self.verbose:
@@ -764,26 +883,67 @@ class RAGPipeline:
         # Reset estado
         self.state = {"query": query}
         
-        # Executar pipeline
+        # Passo 1: intenção
         intent = self.step1_classify_intent(query)
-        context = self.step2_extract_context(query, intent)
-        first_results = self.step3_first_retrieval(context)
-        refined = self.step4_refine_queries(query, context, first_results)
-        second_results = self.step5_second_retrieval(refined)
-        fused_context = self.step6_fuse_context(first_results, second_results)
-        
-        # Interpretação de dados (opcional)
-        tables = self.state.get("all_evidence", {}).get("tables", [])
-        data_interpretation = self.step7_interpret_data(tables)
-        
-        # Gerar resposta
-        response = self.step8_generate_response(
-            query, intent, fused_context, data_interpretation
-        )
-        
-        # Verificar fatos
-        evidence = self.state.get("all_evidence", {})
-        verification = self.step9_verify_facts(response, evidence)
+
+        # Caminho otimizado para recomendações: não precisa da pipeline completa
+        if intent.intent_type == "recommendation":
+            context = self.step2_extract_context(query, intent)
+
+            recs = search_recommendations(
+                context.query_for_recommendations, top_k=5
+            )
+
+            # Guardar evidências mínimas
+            self.state["first_retrieval"] = {"recomendacoes": recs}
+            self.state["second_retrieval"] = {"recomendacoes": recs}
+            self.state["all_evidence"] = {
+                "chunks": [],
+                "tables": [],
+                "recommendations": recs,
+                "images": [],
+            }
+
+            # Contexto simples baseado apenas nas recomendações
+            fused_context = "Documentos recomendados:\n" + "\n".join(
+                [
+                    f"- {r.get('titulo', 'Sem título')} (score: {r.get('score', 0)})\n  Resumo: {r.get('resumo', '')}"
+                    for r in recs
+                ]
+            )
+
+            response = self.step8_generate_response(
+                query, intent, fused_context, data_interpretation=None
+            )
+
+            # Para recomendações, a verificação de fatos é trivial
+            verification = FactCheckResult(
+                is_valid=True,
+                issues_found=[],
+                unsupported_claims=[],
+                corrections_needed=False,
+                verification_notes="Consulta de recomendação baseada diretamente nas coleções vetoriais.",
+            )
+        else:
+            # Fluxo completo de RAG textual/dados/imagens
+            context = self.step2_extract_context(query, intent)
+            first_results = self.step3_first_retrieval(context)
+            refined = self.step4_refine_queries(query, context, first_results)
+            second_results = self.step5_second_retrieval(refined)
+            fused_context = self.step6_fuse_context(first_results, second_results)
+            
+            # Interpretação de dados (opcional)
+            tables = self.state.get("all_evidence", {}).get("tables", [])
+            data_interpretation = self.step7_interpret_data(tables)
+            
+            # Gerar resposta
+            response = self.step8_generate_response(
+                query, intent, fused_context, data_interpretation
+            )
+            
+            # Verificar fatos
+            evidence = self.state.get("all_evidence", {})
+            verification = self.step9_verify_facts(response, evidence)
         
         # Retry se necessário
         retries = 0
