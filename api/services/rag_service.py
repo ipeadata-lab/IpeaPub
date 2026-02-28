@@ -1,8 +1,8 @@
 from openai import OpenAI
 from api.config.settings import settings
 from api.config.prompts import RAG_PROMPT
-from api.models.rag import RAGResponse
-from api.services.search import SearchService
+from api.models.rag_models import RAGResponse
+from api.services.search_service import SearchService
 
 class RagService:
     def __init__(self, search_service: SearchService):

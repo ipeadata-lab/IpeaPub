@@ -17,7 +17,7 @@ load_dotenv()
 COLLECTION_NAME = "publicacoes_ipea"
 
 
-def _dense_vector(size: int = 512) -> list[float]:
+def _dense_vector(size: int = 1024) -> list[float]:
     return [0.001 * (i + 1) for i in range(size)]
 
 
@@ -30,11 +30,12 @@ def _sparse_vector() -> dict:
 
 
 def main() -> None:
-    qdrant_url = os.getenv("QDRANT_URL")
-    if not qdrant_url:
-        raise ValueError("QDRANT_URL não encontrado no ambiente/.env")
 
-    client = QdrantClient(url=qdrant_url)
+    client = QdrantClient(
+        url=os.getenv("QDRANT_URL"),
+        api_key=os.getenv("QDRANT_API_KEY"),
+        timeout=120
+    )
 
     point = models.PointStruct(
         id=str(uuid.uuid4()),

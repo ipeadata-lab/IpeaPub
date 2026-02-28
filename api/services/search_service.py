@@ -1,12 +1,11 @@
 from qdrant_client import QdrantClient, models
-from sympy.codegen.cxxnodes import using
-
-from api.models.search import SearchResult, SearchResponse
+from api.models.search_models import SearchResult, SearchResponse
 from api.services.embeddings import EmbeddingsService
 
+
 class SearchService:
-    def __init__(self, qdrant_url: str, collection_name: str):
-        self.qdrant = QdrantClient(url=qdrant_url)
+    def __init__(self, qdrant_url: str, qdrant_api_key: str, collection_name: str):
+        self.qdrant = QdrantClient(url=qdrant_url, api_key=qdrant_api_key)
         self.collection_name = collection_name
         self.embeddings_service = EmbeddingsService()
 
@@ -26,7 +25,7 @@ class SearchService:
                         {"query": query_sparse, "using": "sparse", "limit": 20},
                     ],
                     "query": models.FusionQuery(fusion=models.Fusion.RRF),
-                    "limit": 15,
+                    "limit": 20,
                 }
             ],
             query=query_colbert,

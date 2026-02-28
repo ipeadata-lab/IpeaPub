@@ -1,8 +1,8 @@
 from fastapi import APIRouter
-from api.models.rag import RAGResponse, RAGRequest
-from api.services.rag import RagService
+from api.models.rag_models import RAGResponse, RAGRequest
+from api.services.rag_service import RagService
 
-from api.routers.search import search_service
+from api.routers.search_router import search_service
 
 router = APIRouter()
 
